@@ -456,7 +456,7 @@ button.pn:hover { text-decoration: underline; }
       var monday = tourneyMonday(start), week = weekOfOrd(monday), sg = null;
       (ev.groupings || []).forEach(function (g) {
         var slug = (g.grouping && g.grouping.slug) || '';
-        if (slug.indexOf('singles') < 0) return;
+        if (slug !== (tour === 'M' ? 'mens-singles' : 'womens-singles')) return;      // joint events list both tours (and juniors) in one scoreboard
         (g.competitions || []).forEach(function (c) {
           var st = (c.status && c.status.type && c.status.type.name) || '';
           if (st !== 'STATUS_FINAL' && st !== 'STATUS_RETIRED') return;      // walkovers and unfinished matches are ignored
@@ -499,7 +499,7 @@ button.pn:hover { text-decoration: underline; }
       var monday = tourneyMonday(start), week = weekOfOrd(monday), sg = null;
       (ev.groupings || []).forEach(function (g) {
         var slug = (g.grouping && g.grouping.slug) || '';
-        if (slug.indexOf('singles') < 0) return;
+        if (slug !== (tour === 'M' ? 'mens-singles' : 'womens-singles')) return;      // joint events list both tours (and juniors) in one scoreboard
         (g.competitions || []).forEach(function (c) {
           var st = (c.status && c.status.type) || {}, nm = st.name || '', cs = c.competitors || [], i, state;
           if (cs.length !== 2) return;
@@ -707,10 +707,10 @@ button.pn:hover { text-decoration: underline; }
   /* ---------------- live results (ESPN) ---------------- */
   function cacheRead(d) {
     for (var t = d.liveStart; t <= NOW_WEEK; t++) {
-      var c = lsGet('tg5:' + d.sex + ':' + t);
+      var c = lsGet('tg6:' + d.sex + ':' + t);
       if (c && c.ms) c.ms.forEach(function (m) { d.live.espn.set(m.key, m); });
     }
-    var w = lsGet('tg5w:' + d.sex);                       // last known schedule and results of this week
+    var w = lsGet('tg6w:' + d.sex);                       // last known schedule and results of this week
     if (w && w.ms) d.wk = { at: new Date(w.ts), ms: w.ms, cached: true };
   }
   function shortRound(r) {
@@ -751,7 +751,7 @@ button.pn:hover { text-decoration: underline; }
     d.live.status = 'loading'; d.live.ok = 0; d.live.fail = 0; paintStatus();
     var now = Date.now(), raw = {};
     return pool(weeks, 4, function (t) {
-      var key = 'tg5:' + d.sex + ':' + t, c = t <= NOW_WEEK ? lsGet(key) : null;
+      var key = 'tg6:' + d.sex + ':' + t, c = t <= NOW_WEEK ? lsGet(key) : null;
       var weekEnd = ((t * 7 + 8) - 719163) * 86400000 + 2 * 86400000;       // two days after the week ends
       if (c && c.ts > weekEnd && !force) { d.live.ok++; return; }
       var date = C.isoOf(t * 7 + 3).replace(/-/g, '');
@@ -776,7 +776,7 @@ button.pn:hover { text-decoration: underline; }
           wk.push({ key: m.key, ev: m.event, city: m.city, wk: m.week, sy: m.sy, how: m.how, rd: shortRound(m.round), start: m.start, date: m.date, court: m.court, st: m.state, p: m.p, win: m.win, sc: m.text });
         });
       });
-      if (raw[NOW_WEEK] || raw[NOW_WEEK + 1]) { d.wk = { at: new Date(), ms: wk, cached: false }; lsSet('tg5w:' + d.sex, { ts: Date.now(), ms: wk }); }
+      if (raw[NOW_WEEK] || raw[NOW_WEEK + 1]) { d.wk = { at: new Date(), ms: wk, cached: false }; lsSet('tg6w:' + d.sex, { ts: Date.now(), ms: wk }); }
       d.live.at = new Date();
       d.live.status = d.live.ok > 0 ? 'ok' : 'blocked';
       rerun(d); paintStatus(); render();
