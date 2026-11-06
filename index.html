@@ -1063,7 +1063,9 @@ button.pn:hover { text-decoration: underline; }
     var keys = SKEY.filter(function (k) { return chartState.on[k] && h[k].length; });
     if (!keys.length) { chartState.on.g = true; keys = ['g']; }
     var all = h.g.length ? h.g : h[keys[0]];
-    var tMax = Math.max(NOW_WEEK, all.length ? all[all.length - 1].t : NOW_WEEK), tMin = all.length ? all[0].t : tMax - 52;
+    // the chart ends where the career ends: a player who has not played for a year stops at his last week, everyone else runs to today
+    var lastT = 0; SKEY.forEach(function (k) { if (h[k].length) lastT = Math.max(lastT, h[k][h[k].length - 1].t); });
+    var tMax = lastT && NOW_WEEK - lastT > 52 ? lastT : Math.max(NOW_WEEK, lastT), tMin = all.length ? all[0].t : tMax - 52;
     if (chartState.range !== 'all') tMin = Math.max(tMin, tMax - Math.round(+chartState.range * 52.18));
     if (tMax - tMin < 8) tMin = tMax - 8;
     var lo = Infinity, hi = -Infinity;
