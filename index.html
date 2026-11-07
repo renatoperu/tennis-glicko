@@ -125,6 +125,41 @@ details summary { cursor: pointer; padding: 10px 0; font-weight: 600; min-height
 table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; font-size: 14px; }
 th, td { text-align: right; padding: 5px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
 th:first-child, td:first-child { text-align: left; } th { color: var(--muted); font-weight: 500; }
+
+.slots { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.slot { position: relative; display: grid; gap: 4px; min-width: 0; }
+.slot label { font-size: 13px; font-weight: 600; color: var(--muted); }
+.slot input { width: 100%; min-height: 44px; border-radius: 12px; border: 1px solid var(--line); background: var(--card); color: var(--ink); padding: 0 12px; font-size: 16px; }
+.cres { position: absolute; z-index: 5; left: 0; right: 0; top: 100%; background: var(--card); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.18); max-height: 320px; overflow: auto; }
+.cres button { display: flex; width: 100%; justify-content: space-between; gap: 10px; border: 0; background: transparent; color: var(--ink); text-align: left; padding: 10px 12px; min-height: 44px; align-items: center; }
+.cres button:hover { background: var(--chip); }
+.cres .empty { padding: 12px; color: var(--muted); }
+.picked { display: flex; align-items: center; gap: 8px; min-height: 44px; border: 1px solid var(--line); border-radius: 12px; padding: 0 6px 0 12px; min-width: 0; }
+.picked b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.picked small { color: var(--muted); }
+.picked .x { margin-left: auto; border: 0; background: transparent; color: var(--muted); font-size: 22px; min-width: 40px; min-height: 40px; }
+i.sw { width: 10px; height: 10px; border-radius: 3px; display: inline-block; flex: none; }
+.compare, #cmpbody { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.compare > *, #cmpbody > * { min-width: 0; }
+.cmphead { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.cmpt { min-width: 0; }
+.cmpt .lb { overflow: hidden; }
+.cmpt .v { white-space: nowrap; }
+.cmpt .lb { color: var(--ink); font-weight: 600; min-width: 0; }
+.cmpt .v { font-size: 30px; }
+@media (max-width: 420px) { .cmpt .v { font-size: 26px; } .cmpt .v small { margin-left: 3px; } }
+.cmptbl th, .cmptbl td { padding: 8px 6px; text-align: right; }
+.cmptbl th:first-child, .cmptbl td:first-child { text-align: left; }
+.cmptbl thead th { font-size: 13px; color: var(--muted); font-weight: 600; }
+.cmptbl tbody th { text-align: left; font-weight: 500; white-space: nowrap; }
+.cmptbl tbody th i.sw { margin-right: 7px; }
+.cmptbl .lead { color: var(--up); }
+.cmptbl td.pc { min-width: 110px; }
+.cmptbl .pbar { height: 8px; border-radius: 4px; background: var(--s-c); overflow: hidden; }
+.cmptbl .pbar span { display: block; height: 100%; }
+.cmptbl .pr { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-top: 2px; }
+.legend2 { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; color: var(--muted); padding: 4px 4px 6px; }
+.legend2 span { display: inline-flex; align-items: center; gap: 6px; }
 .tabs { display: flex; gap: 2px; margin: 0 0 -10px; }
 .tabs button { flex: 1; border: 0; border-bottom: 3px solid transparent; background: transparent; padding: 6px 4px; min-height: 42px; font-weight: 600; color: var(--muted); }
 .tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--ink); }
@@ -177,6 +212,7 @@ button.pn:hover { text-decoration: underline; }
       <button type="button" data-tab="rank" aria-selected="true">Rankings</button>
       <button type="button" data-tab="week" aria-selected="false">This week</button>
       <button type="button" data-tab="past" aria-selected="false">Past results</button>
+      <button type="button" data-tab="compare" aria-selected="false">Compare</button>
     </nav>
   </header>
 
@@ -228,6 +264,7 @@ button.pn:hover { text-decoration: underline; }
     this.cap = 0;
     this.mu = []; this.phi = []; this.sig = []; this.last = [];
     for (var k = 0; k < NSYS; k++) { this.mu.push(null); this.phi.push(null); this.sig.push(null); this.last.push(null); }
+    this.ring = null; this.tagW = new Int32Array(52).fill(-1000000);   /* match counts: slot (week % 52) x player */
     this.grow(n || 0);
     this.onUpdate = null;      // function(k, p, t, mu, phi)
   }
@@ -240,13 +277,16 @@ button.pn:hover { text-decoration: underline; }
         if (this.mu[k]) { m.set(this.mu[k].subarray(0, this.n)); p.set(this.phi[k].subarray(0, this.n)); s.set(this.sig[k].subarray(0, this.n)); l.set(this.last[k].subarray(0, this.n)); }
         this.mu[k] = m; this.phi[k] = p; this.sig[k] = s; this.last[k] = l;
       }
+      var ring = new Uint8Array(52 * cap);
+      if (this.ring) for (var sl = 0; sl < 52; sl++) ring.set(this.ring.subarray(sl * this.cap, sl * this.cap + this.n), sl * cap);
+      this.ring = ring;
       this.cap = cap;
     }
     this.n = n;
   };
   Model.prototype.clone = function () {
     var c = new Model(0);
-    c.cap = this.cap; c.n = this.n; c.onUpdate = null;
+    c.cap = this.cap; c.n = this.n; c.onUpdate = null; c.ring = this.ring.slice(); c.tagW = this.tagW.slice();
     for (var k = 0; k < NSYS; k++) {
       c.mu[k] = this.mu[k].slice(); c.phi[k] = this.phi[k].slice(); c.sig[k] = this.sig[k].slice(); c.last[k] = this.last[k].slice();
     }
@@ -266,7 +306,24 @@ button.pn:hover { text-decoration: underline; }
         this.mu[k][p] = f[o]; this.phi[k][p] = f[o + 1]; this.sig[k][p] = f[o + 2]; this.last[k][p] = Math.round(f[o + 3]);
       }
     }
+    /* optional tail: uint8 [52][count], row j = matches in week liveStart-52+j */
+    var off = 8 + 4 * count + 4 * count * NSYS * 4;
+    if (buf.byteLength >= off + 52 * count) {
+      var cm = new Uint8Array(buf, off, 52 * count);
+      for (var j2 = 0; j2 < 52; j2++) {
+        var wk = liveStart - 52 + j2, sl = ((wk % 52) + 52) % 52;
+        this.tagW[sl] = wk; this.ring.fill(0, sl * this.cap, (sl + 1) * this.cap);
+        for (var q = 0; q < count; q++) this.ring[sl * this.cap + idx[q]] = cm[j2 * count + q];
+      }
+    }
     return liveStart;
+  };
+  /* matches played in weeks t-51..t */
+  Model.prototype.n52 = function (p, t) {
+    if (p < 0 || p >= this.n) return 0;
+    var tot = 0;
+    for (var sl = 0; sl < 52; sl++) { var w = this.tagW[sl]; if (w >= t - 51 && w <= t) tot += this.ring[sl * this.cap + p]; }
+    return tot;
   };
   Model.prototype.cur = function (k, p, t, out) {
     var last = this.last[k][p];
@@ -308,9 +365,12 @@ button.pn:hover { text-decoration: underline; }
   /* matches: array of {a, b, sy, s} (a = winner) */
   Model.prototype.week = function (t, matches) {
     if (!matches.length) return;
-    var all = [], per = [[], [], [], [], []], i, m;
+    var all = [], per = [[], [], [], [], []], i, m, sl = ((t % 52) + 52) % 52;
+    if (this.tagW[sl] !== t) { this.ring.fill(0, sl * this.cap, (sl + 1) * this.cap); this.tagW[sl] = t; }
     for (i = 0; i < matches.length; i++) {
       m = matches[i];
+      if (this.ring[sl * this.cap + m.a] < 255) this.ring[sl * this.cap + m.a]++;
+      if (this.ring[sl * this.cap + m.b] < 255) this.ring[sl * this.cap + m.b]++;
       all.push([m.a, m.b, m.s]);
       if (m.sy > 0) per[m.sy].push([m.a, m.b, m.s]);
     }
@@ -325,9 +385,9 @@ button.pn:hover { text-decoration: underline; }
     return Q * Math.sqrt(this.phi[k][p] * this.phi[k][p] + gap * sg * sg);
   };
   /* top lists at end of week t: returns per system {idx, rt, rd} (<= topn rows) */
-  Model.prototype.top = function (t, cuts, topn, activeWeeks, includeProvisional) {
+  Model.prototype.top = function (t, cuts, topn, activeWeeks, includeProvisional, minMatches) {
     var out = [], k, p, act = [];
-    for (p = 0; p < this.n; p++) if (this.last[0][p] >= t - (activeWeeks - 1)) act.push(p);
+    for (p = 0; p < this.n; p++) if (this.last[0][p] >= t - (activeWeeks - 1) && this.n52(p, t) >= (minMatches || 0)) act.push(p);
     for (k = 0; k < NSYS; k++) {
       var rows = [];
       for (var i = 0; i < act.length; i++) {
@@ -613,7 +673,7 @@ button.pn:hover { text-decoration: underline; }
     for (var t = liveStart; t <= endWeek; t++) {
       if (t === endWeek) pre = model.clone();            // ratings at the start of the current week, for pre-match win probabilities
       model.week(t, byWeek.get(t) || []);
-      if (opts && opts.snapshots) weeks.push({ t: t, top: model.top(t, opts.cuts, opts.topn, opts.activeWeeks, false) });
+      if (opts && opts.snapshots) weeks.push({ t: t, top: model.top(t, opts.cuts, opts.topn, opts.activeWeeks, false, opts.minMatches) });
     }
     return { model: model, pre: pre, weeks: weeks, hist: hist, stats: stats };
   }
@@ -638,7 +698,7 @@ button.pn:hover { text-decoration: underline; }
   var REFRESH_MS = 2 * 3600 * 1000;
   var META = null, TS = null, GUESS = null, COEF = null;
   var D = { M: null, W: null };
-  var S = { sex: 'M', sys: 0, topn: 25, week: null, view: 'rank', pid: null, pweek: null, tier: 0, more: 0 };
+  var S = { sex: 'M', sys: 0, topn: 25, week: null, view: 'rank', cmp: [null, null], pid: null, pweek: null, tier: 0, more: 0 };
   var TIERS = ['Tour', 'Challenger', 'ITF'];
 
   function $(s, el) { return (el || document).querySelector(s); }
@@ -729,7 +789,7 @@ button.pn:hover { text-decoration: underline; }
   function rerun(d) {
     var cuts = META.params.rdCut;
     d.res = C.replay(d.base, d.pending, Array.from(d.live.espn.values()), d.names, d.liveStart, NOW_WEEK,
-      { snapshots: true, cuts: cuts, topn: 100, activeWeeks: META.params.activeWeeks });
+      { snapshots: true, cuts: cuts, topn: 100, activeWeeks: META.params.activeWeeks, minMatches: META.params.minMatches || 0 });
     d.liveWeeks = d.res.weeks;
     d.searchN = -1;
   }
@@ -805,14 +865,17 @@ button.pn:hover { text-decoration: underline; }
       out.sys.push({ r: m.rating(k, i), rd: rd, last: m.last[k][i], prov: rd > cut });
     }
     out.active = i < m.n && m.last[0][i] >= t - (META.params.activeWeeks - 1);
+    out.n52 = m.n52(i, t);
+    out.listed = out.active && out.n52 >= (META.params.minMatches || 0);
     return out;
   }
   function rankNow(d, i, k) {
     var m = d.res.model, t = NOW_WEEK, cut = META.params.rdCut[k], aw = META.params.activeWeeks;
-    if (i >= m.n || m.last[k][i] < 0 || m.last[0][i] < t - (aw - 1) || m.rd(k, i, t) > cut) return null;
+    var mm = META.params.minMatches || 0;
+    if (i >= m.n || m.last[k][i] < 0 || m.last[0][i] < t - (aw - 1) || m.rd(k, i, t) > cut || m.n52(i, t) < mm) return null;
     var r = m.rating(k, i), c = 1;
     for (var p = 0; p < m.n; p++) {
-      if (p !== i && m.last[0][p] >= t - (aw - 1) && m.last[k][p] >= 0 && m.rating(k, p) > r && m.rd(k, p, t) <= cut) c++;
+      if (p !== i && m.last[0][p] >= t - (aw - 1) && m.last[k][p] >= 0 && m.rating(k, p) > r && m.rd(k, p, t) <= cut && m.n52(p, t) >= mm) c++;
     }
     return c;
   }
@@ -939,7 +1002,7 @@ button.pn:hover { text-decoration: underline; }
   function paintStatus() {
     var el = $('#statusline'); if (!el) return;
     var d = D[S.sex], l = d && d.live, cls = 'warn', txt = '';
-    var through = 'Archive through 2 Jun 2026 (men’s Challengers to 14 Jun)';
+    var through = 'Archive through 2 Jun 2026 (men’s Challengers to 2 Nov)';
     if (!d || !d.ready) { el.innerHTML = ''; return; }
     if (S.view === 'week') {
       var tf = { hour: '2-digit', minute: '2-digit' };
@@ -956,7 +1019,7 @@ button.pn:hover { text-decoration: underline; }
     else if (l.status === 'ok') {
       cls = 'ok';
       var tm = l.at ? l.at.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
-      txt = 'Live tour results ' + (l.fail ? '(' + l.fail + ' weeks missing) ' : '') + 'updated ' + tm + ' · ' + d.res.stats.espn + ' matches since June · Challenger/ITF through 2 Jun 2026 (men’s Challengers 14 Jun)';
+      txt = 'Live tour results ' + (l.fail ? '(' + l.fail + ' weeks missing) ' : '') + 'updated ' + tm + ' · ' + d.res.stats.espn + ' matches since June · Challenger/ITF through 2 Jun 2026 (men’s Challengers 2 Nov)';
     } else if (l.status === 'blocked') {
       txt = 'Live feed not reachable here' + (d.res.stats.espn ? ' · showing ' + d.res.stats.espn + ' cached live matches' : '') + ' · ' + through;
     } else txt = through;
@@ -978,7 +1041,7 @@ button.pn:hover { text-decoration: underline; }
     var i = S.pid, pl = d.players, first = pl.f[i];
     main.innerHTML =
       '<div class="player"><button type="button" class="back" id="back">← Rankings</button>' +
-      '<div class="ph"><h2>' + esc(playerName(d, i)) + '</h2><p>' + esc(pl.c[i] || '') + (first >= 0 ? ' · first rated ' + yearOfWeek(first) : '') + '</p><p id="pstatus" style="margin-top:8px"></p></div>' +
+      '<div class="ph"><h2>' + esc(playerName(d, i)) + '</h2><p>' + esc(pl.c[i] || '') + (first >= 0 ? ' · first rated ' + yearOfWeek(first) : '') + '</p><p id="pstatus" style="margin-top:8px"></p><p style="margin-top:8px"><button type="button" class="chip" data-cmpfrom="' + i + '">Compare with another player</button></p></div>' +
       '<div class="tiles" id="tiles"></div>' +
       '<div class="card"><h3>Rating evolution</h3><div id="chartbar" class="chartbar"></div><div id="chart" class="chart"><div class="loading">Loading history…</div></div></div>' +
       '<div id="facts" class="facts"></div>' +
@@ -994,6 +1057,7 @@ button.pn:hover { text-decoration: underline; }
     if (!g) status = '<span class="pill">No rating yet</span>';
     else if (rkG) status = '<span class="pill"><span class="dot ok"></span>Ranked #' + rkG + ' in the ' + (S.sex === 'M' ? 'men’s' : 'women’s') + ' list</span>';
     else if (!inf.active) status = '<span class="pill"><span class="dot"></span>Not listed: last played ' + fmtWeek(g.last) + '</span>';
+    else if (!inf.listed) status = '<span class="pill"><span class="dot"></span>Not listed: ' + inf.n52 + ' matches in the last 52 weeks (' + (META.params.minMatches || 0) + ' needed)</span>';
     else status = '<span class="pill"><span class="dot warn"></span>Provisional: rating still uncertain (±' + Math.round(g.rd) + ')</span>';
     $('#pstatus').innerHTML = status;
     for (k = 0; k < 4; k++) {
@@ -1245,7 +1309,7 @@ button.pn:hover { text-decoration: underline; }
         '<div class="mm"><span class="num sc2">' + esc(m.sc) + '</span>' + (m.rd ? '<span>' + esc(m.rd) + '</span>' : '') + surfChip(m.sy) + '</div></li>';
     }
     if (cur !== null) h += '</ul>';
-    if (!list.length) h = '<div class="empty-state card">' + (tier > 0 && t > d.liveStart + 1 ? 'No Challenger or ITF results are available after 14 June 2026 (women’s ITF: 2 June).' : 'No matches in this selection.') + '</div>';
+    if (!list.length) h = '<div class="empty-state card">' + (tier > 0 && t > d.liveStart + 1 ? 'No Challenger or ITF results are available after 2 November 2026 (women’s ITF and the rest: 2 June).' : 'No matches in this selection.') + '</div>';
     var more = !S.more && list.length > LIM ? '<button type="button" class="chip" id="moreUp" style="margin-top:10px">Show all ' + list.length + ' matches</button>' : '';
     main.innerHTML = '<div id="statusline" class="status"></div><div class="controls">' +
       '<div class="weekrow"><button type="button" class="iconbtn" id="pwPrev" aria-label="Previous week">‹</button>' +
@@ -1263,10 +1327,139 @@ button.pn:hover { text-decoration: underline; }
       '<p>Every player has a Glicko-2 rating, updated once a week using all of that week’s matches. A new player starts at 1500 with an uncertainty (RD) of 350 points; the rating moves most while RD is large and settles as results accumulate.</p>' +
       '<ul><li><b>General</b> uses every match on every surface. <b>Hard, Clay, Grass</b> and Carpet are separate ratings built only from matches on that surface.</li>' +
       '<li><b>What counts as a result:</b> only who won. A win is 1 and a loss is 0, whatever the score, so a 7–6 7–6 win counts the same as 6–0 6–0. Retirements count as wins. Walkovers and defaults are ignored.</li>' +
-      '<li><b>Listed players</b> played within the last 52 weeks and have an RD of at most ' + META.params.rdCut[0] + ' (surfaces ' + META.params.rdCut[1] + '–' + META.params.rdCut[3] + '). Others are provisional and stay searchable. Records such as peak rating only count while the rating was reliable.</li>' +
+      '<li><b>Listed players</b> played within the last 52 weeks, have at least ' + (META.params.minMatches || 0) + ' matches in that time (qualifying, Challenger and ITF matches count) and an RD of at most ' + META.params.rdCut[0] + ' (surfaces ' + META.params.rdCut[1] + '–' + META.params.rdCut[3] + '). Others are provisional and stay searchable. Records such as peak rating only count while the rating was reliable.</li>' +
       '<li><b>Win chances</b> (This week tab) turn the rating gap, the surface rating and both players’ uncertainty into a match-win probability. The conversion was fitted on tour matches from 2005 to 2021 and checked on 2022 and later (log-loss ' + (COEF.info.M.general_and_surface || COEF.info.M['general+surface'][0]).toFixed(3) + ' men, ' + (COEF.info.W['general+surface'][0]).toFixed(3) + ' women, against 0.693 for a coin flip).</li>' +
       '<li>Men and women are rated separately. Ratings are not comparable across the two lists.</li></ul>' +
-      '<p><b>Data:</b> match results from Jeff Sackmann’s ATP and WTA datasets (CC BY-NC-SA 4.0; ATP, Challenger, Futures, WTA and ITF, 1968 to 2 June 2026; men’s Challengers also from the ATP site to 14 June), plus ATP and WTA tour results from ESPN after that. Challenger and ITF results after those dates are not loaded yet, so those players’ ratings are frozen until they are.</p></details>';
+      '<p><b>Data:</b> match results from Jeff Sackmann’s ATP and WTA datasets (CC BY-NC-SA 4.0; ATP, Challenger, Futures, WTA and ITF, 1968 to 2 June 2026; men’s Challengers also from the ATP site to 2 November), plus ATP and WTA tour results from ESPN after that. Challenger and ITF results after those dates are not loaded yet, so those players’ ratings are frozen until they are.</p></details>';
+  }
+
+  /* ---------------- compare view ---------------- */
+  var cmpState = { sys: 'g', range: 'all' };
+  var CMPVAR = ['--s-h', '--s-c'];
+  function cmpSlot(d, n) {
+    var i = S.cmp[n], lab = n ? 'Player B' : 'Player A';
+    if (i == null) return '<div class="slot"><label for="cq' + n + '">' + lab + '</label><input type="search" id="cq' + n + '" class="cq" data-slot="' + n + '" placeholder="Search a ' + (S.sex === 'M' ? 'men’s' : 'women’s') + ' player…" autocomplete="off"><div class="cres" id="cres' + n + '" hidden></div></div>';
+    return '<div class="slot"><label>' + lab + '</label><div class="picked"><i class="sw" style="background:var(' + CMPVAR[n] + ')"></i><b>' + esc(playerName(d, i)) + '</b><small>' + esc(d.players.c[i] || '') + '</small><button type="button" class="x" data-clear="' + n + '" aria-label="Remove ' + esc(playerName(d, i)) + '">×</button></div></div>';
+  }
+  function renderCompare() {
+    var main = $('#main'), d = D[S.sex];
+    if (!d || !d.ready) { main.innerHTML = '<div class="loading">Loading…</div>'; return; }
+    var a = S.cmp[0], b = S.cmp[1];
+    main.innerHTML = '<div class="compare"><div class="card"><h3>Compare two players</h3><div class="slots">' + cmpSlot(d, 0) + cmpSlot(d, 1) + '</div>' +
+      '<p class="note">Showing the ' + (S.sex === 'M' ? 'men’s' : 'women’s') + ' list. Use Men / Women above to compare players from the other list.</p></div><div id="cmpbody"></div></div>';
+    if (a == null || b == null) { $('#cmpbody').innerHTML = '<div class="empty-state card">Choose ' + (a == null && b == null ? 'two players' : 'one more player') + ' to see their ratings, win chances and rating history side by side.</div>'; return; }
+    $('#cmpbody').innerHTML = '<div class="loading">Loading history…</div>';
+    Promise.all([loadHist(d, a), loadHist(d, b)]).then(function (hs) {
+      if (S.view !== 'compare' || S.cmp[0] !== a || S.cmp[1] !== b) return;
+      drawCompare(d, a, b, hs[0], hs[1]);
+    }).catch(function () { var c = $('#cmpbody'); if (c) c.innerHTML = '<p class="err">Could not load the rating histories.</p>'; });
+  }
+  function peakOf(h) {
+    var pk = 0, pkw = 0;
+    h.g.forEach(function (x) { if (x.rd <= META.params.rdCut[0] && x.r > pk) { pk = x.r; pkw = x.t; } });
+    return { r: pk, w: pkw };
+  }
+  function drawCompare(d, a, b, ha, hb) {
+    var ids = [a, b], hs = [ha, hb], inf = ids.map(function (i) { return info(d, i); }), m = d.res.model;
+    var cur = ids.map(function (i, n) { return [0, 1, 2, 3, 4].map(function (k) { return curOf(d, i, k, hs[n]); }); });
+    var head = '<div class="cmphead">' + ids.map(function (i, n) {
+      var g = cur[n][0], rk = inf[n].active ? rankNow(d, i, 0) : null, st;
+      if (!g) st = 'No rating yet'; else if (rk) st = 'Ranked #' + rk; else if (!inf[n].active) st = 'Not active · last played ' + fmtWeek(g.last); else if (!inf[n].listed) st = 'Not listed (' + inf[n].n52 + ' matches in 52 weeks)'; else st = 'Provisional rating';
+      return '<div class="tile cmpt"><div class="lb"><i class="sw" style="background:var(' + CMPVAR[n] + ')"></i>' + esc(playerName(d, i)) + '</div><div class="v">' + (g ? Math.round(g.r) : '–') + (g ? '<small>±' + Math.round(g.rd) + '</small>' : '') + '</div><div class="s">' + esc(st) + '</div></div>';
+    }).join('') + '</div>';
+    // surface table with win chances (only when both players have a current rating)
+    var canP = m.rated(0, a) && m.rated(0, b) && inf[0].active && inf[1].active, rows = '';
+    for (var k = 0; k < 5; k++) {
+      var x = cur[0][k], y = cur[1][k];
+      if (k === 4 && !(x || y)) continue;
+      if (!x && !y) continue;
+      var pa = null;
+      if (canP && (k === 0 || (m.rated(k, a) && m.rated(k, b)))) pa = m.winProb(a, b, k, NOW_WEEK, COEF[S.sex]).p;
+      var cellR = function (z, other) { return z ? '<b' + (other && z.r > other.r ? ' class="lead"' : '') + '>' + Math.round(z.r) + '</b> <small>±' + Math.round(z.rd) + '</small>' : '–'; };
+      var bar = pa == null ? '–' : '<div class="pbar" title="Chance that ' + esc(playerName(d, a)) + ' wins"><span style="width:' + (pa * 100).toFixed(1) + '%;background:var(' + CMPVAR[0] + ')"></span></div><div class="pr"><span>' + Math.round(pa * 100) + '%</span><span>' + Math.round((1 - pa) * 100) + '%</span></div>';
+      rows += '<tr><th scope="row"><i class="sw' + (k === 0 ? ' gen' : '') + '" style="background:var(' + SVAR[k] + ')"></i>' + SYS[k] + '</th><td>' + cellR(x, y) + '</td><td class="pc">' + bar + '</td><td>' + cellR(y, x) + '</td></tr>';
+    }
+    var pkA = peakOf(ha), pkB = peakOf(hb), rfA = rankFacts(d, a), rfB = rankFacts(d, b);
+    var tbl = '<div class="card"><h3>Ratings now</h3><div class="tablewrap"><table class="cmptbl"><thead><tr><th></th><th>' + esc(playerName(d, a)) + '</th><th>Win chance</th><th>' + esc(playerName(d, b)) + '</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+      '<p class="note">' + (canP ? 'Win chance if they played each other now (surface rows use the general plus that surface rating). Bold marks the higher rating.' : 'Win chances need two currently active players, so none are shown here. Bold marks the higher rating.') + '</p></div>';
+    var cmpRow = function (lb, va, vb, sa, sb) { return '<tr><th scope="row">' + lb + '</th><td>' + va + (sa ? '<small> ' + sa + '</small>' : '') + '</td><td>' + vb + (sb ? '<small> ' + sb + '</small>' : '') + '</td></tr>'; };
+    var facts = '<div class="card"><h3>Career</h3><div class="tablewrap"><table class="cmptbl"><thead><tr><th></th><th>' + esc(playerName(d, a)) + '</th><th>' + esc(playerName(d, b)) + '</th></tr></thead><tbody>' +
+      cmpRow('Peak rating', pkA.r ? Math.round(pkA.r) : '–', pkB.r ? Math.round(pkB.r) : '–', pkA.r ? fmtWeek(pkA.w) : '', pkB.r ? fmtWeek(pkB.w) : '') +
+      cmpRow('Best rank', rfA.best < 1e9 ? '#' + rfA.best : '–', rfB.best < 1e9 ? '#' + rfB.best : '–') +
+      cmpRow('Weeks at #1', rfA.w1, rfB.w1) + cmpRow('Weeks in top 10', rfA.w10, rfB.w10) + cmpRow('Weeks in top 100', rfA.w100, rfB.w100) +
+      cmpRow('First rated', d.players.f[a] >= 0 ? yearOfWeek(d.players.f[a]) : '–', d.players.f[b] >= 0 ? yearOfWeek(d.players.f[b]) : '–') +
+      '</tbody></table></div></div>';
+    var bar = '<div class="chips" role="group" aria-label="Rating">';
+    SKEY.forEach(function (key, k) { if (k === 4 && !(ha.p.length || hb.p.length)) return; bar += '<button type="button" class="chip" data-csys="' + key + '" aria-pressed="' + (cmpState.sys === key) + '"><i' + (k === 0 ? ' class="gen"' : '') + ' style="background:var(' + SVAR[k] + ')"></i>' + SYS[k] + '</button>'; });
+    bar += '</div><div class="chips" role="group" aria-label="Range">';
+    [['all', 'All'], ['20', '20y'], ['10', '10y'], ['5', '5y'], ['2', '2y']].forEach(function (r) { bar += '<button type="button" class="chip" data-crange="' + r[0] + '" aria-pressed="' + (cmpState.range === r[0]) + '">' + r[1] + '</button>'; });
+    var chart = '<div class="card"><h3>Rating evolution</h3><div class="chartbar">' + bar + '</div></div><div id="cchart" class="chart"></div>' +
+      '<div class="legend2"><span><i class="sw" style="background:var(' + CMPVAR[0] + ')"></i>' + esc(playerName(d, a)) + '</span><span><i class="sw" style="background:var(' + CMPVAR[1] + ')"></i>' + esc(playerName(d, b)) + '</span></div></div>';
+    $('#cmpbody').innerHTML = head + tbl + chart + facts;
+    S.cmpH = [ha, hb];
+    paintCompare(d, a, b, ha, hb);
+  }
+  function paintCompare(d, a, b, ha, hb) {
+    var el = $('#cchart'); if (!el) return;
+    var key = cmpState.sys, ser = [ha[key] || [], hb[key] || []], inf = [info(d, a), info(d, b)];
+    var W = Math.max(280, el.clientWidth || 640), H = W < 500 ? 280 : 330, mg = { l: 40, r: 10, t: 10, b: 24 };
+    if (!ser[0].length && !ser[1].length) { el.innerHTML = '<p class="note" style="padding:14px">Neither player has a rating on this surface.</p>'; return; }
+    var tMin = Infinity, tMax = 0;
+    ser.forEach(function (s, n) { if (!s.length) return; tMin = Math.min(tMin, s[0].t); tMax = Math.max(tMax, inf[n].active ? Math.max(NOW_WEEK, s[s.length - 1].t) : s[s.length - 1].t); });
+    if (cmpState.range !== 'all') tMin = Math.max(tMin, tMax - Math.round(+cmpState.range * 52.18));
+    if (tMax - tMin < 8) tMin = tMax - 8;
+    var lo = Infinity, hi = -Infinity;
+    ser.forEach(function (s) { s.forEach(function (x) { if (x.t >= tMin) { lo = Math.min(lo, x.r); hi = Math.max(hi, x.r); } }); });
+    if (!isFinite(lo)) { lo = 1400; hi = 1700; }
+    var step = niceStep(hi - lo, 5), y0 = Math.floor((lo - 5) / step) * step, y1 = Math.ceil((hi + 5) / step) * step;
+    function X(t) { return mg.l + (t - tMin) / (tMax - tMin) * (W - mg.l - mg.r); }
+    function Y(v) { return H - mg.b - (v - y0) / (y1 - y0) * (H - mg.t - mg.b); }
+    var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Rating comparison chart">';
+    for (var v = y0; v <= y1; v += step) svg += '<line x1="' + mg.l + '" x2="' + (W - mg.r) + '" y1="' + Y(v) + '" y2="' + Y(v) + '" stroke="var(--line)" stroke-width="1"/><text x="' + (mg.l - 6) + '" y="' + (Y(v) + 4) + '" text-anchor="end">' + v + '</text>';
+    var y0y = yearOfWeek(tMin), y1y = yearOfWeek(tMax), ys = Math.max(1, Math.ceil((y1y - y0y) / 7));
+    for (var y = Math.ceil(y0y / ys) * ys; y <= y1y; y += ys) {
+      var tw = Math.floor(C.ordOf(y + '-01-01') / 7); if (tw < tMin || tw > tMax) continue;
+      svg += '<text x="' + X(tw) + '" y="' + (H - 6) + '" text-anchor="middle">' + y + '</text>';
+    }
+    ser.forEach(function (s, n) {
+      var p = ''; s.forEach(function (x) { if (x.t >= tMin) p += (p ? 'L' : 'M') + X(x.t).toFixed(1) + ' ' + Y(x.r).toFixed(1); });
+      if (p) svg += '<path d="' + p + '" fill="none" stroke="var(' + CMPVAR[n] + ')" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>';
+    });
+    svg += '<line id="xh" x1="0" x2="0" y1="' + mg.t + '" y2="' + (H - mg.b) + '" stroke="var(--muted)" stroke-width="1" visibility="hidden"/><g id="dots"></g><rect id="hit" x="' + mg.l + '" y="' + mg.t + '" width="' + (W - mg.l - mg.r) + '" height="' + (H - mg.t - mg.b) + '" fill="transparent"/></svg><div id="tip" class="tip" hidden></div>';
+    el.innerHTML = svg;
+    var hit = $('#hit', el), tip = $('#tip', el), xh = $('#xh', el), dots = $('#dots', el);
+    function at(arr, t) { var l = 0, r = arr.length - 1, res = null; while (l <= r) { var mid = (l + r) >> 1; if (arr[mid].t <= t) { res = arr[mid]; l = mid + 1; } else r = mid - 1; } return res; }
+    function move(ev) {
+      var rect = el.getBoundingClientRect(), px = (ev.clientX - rect.left) * (W / rect.width);
+      var t = Math.max(tMin, Math.min(tMax, Math.round(tMin + (px - mg.l) / (W - mg.l - mg.r) * (tMax - tMin))));
+      var rows = '', dd = '';
+      ser.forEach(function (s, n) {
+        var x = at(s, t); if (!x || t > Math.max(NOW_WEEK, s.length ? s[s.length - 1].t : 0) || (!inf[n].active && t > s[s.length - 1].t)) return;
+        rows += '<div><span><i style="background:var(' + CMPVAR[n] + ')"></i>' + esc(playerName(d, n ? b : a)) + '</span><span class="num">' + Math.round(x.r) + ' <small>±' + Math.round(x.rd) + '</small></span></div>';
+        dd += '<circle cx="' + X(Math.min(t, tMax)) + '" cy="' + Y(x.r) + '" r="4" fill="var(' + CMPVAR[n] + ')" stroke="var(--card)" stroke-width="2"/>';
+      });
+      xh.setAttribute('x1', X(t)); xh.setAttribute('x2', X(t)); xh.setAttribute('visibility', 'visible'); dots.innerHTML = dd;
+      tip.hidden = false; tip.innerHTML = '<b>Week of ' + fmtWeek(t) + '</b>' + (rows || '<div><span>No rating yet</span></div>');
+      var tx = X(t) / W * rect.width + 12; if (tx + 190 > rect.width) tx -= 210;
+      tip.style.left = Math.max(0, tx) + 'px'; tip.style.top = '8px';
+    }
+    function leave() { tip.hidden = true; xh.setAttribute('visibility', 'hidden'); dots.innerHTML = ''; }
+    hit.addEventListener('pointermove', move); hit.addEventListener('pointerdown', move); hit.addEventListener('pointerleave', leave);
+  }
+  function cmpHash() {
+    var c = S.cmp.filter(function (x) { return x != null; });
+    return 'compare' + (c.length ? '-' + S.sex + '-' + c.join('-') : '');
+  }
+  function cmpSearch(slot, q) {
+    var box = $('#cres' + slot); if (!box) return;
+    q = q.trim(); if (!q) { box.hidden = true; return; }
+    if (!buildSearch(S.sex)) { box.hidden = false; box.innerHTML = '<div class="empty">Loading player list…</div>'; ensureSex(S.sex).then(function () { cmpSearch(slot, q); }); return; }
+    var d = D[S.sex], res = search(q).filter(function (r) { return r.sex === S.sex && r.i !== S.cmp[1 - slot]; }).slice(0, 8);
+    box.hidden = false;
+    box.innerHTML = res.length ? res.map(function (r) {
+      var g = info(d, r.i).sys[0];
+      return '<button type="button" data-pick="' + slot + '" data-i="' + r.i + '"><span class="n">' + esc(playerName(d, r.i)) + ' <small>' + esc(d.players.c[r.i] || '') + '</small></span><span class="r">' + (g ? Math.round(g.r) : (d.players.r[r.i] || '–')) + '</span></button>';
+    }).join('') : '<div class="empty">No player found.</div>';
   }
 
   /* ---------------- routing and events ---------------- */
@@ -1279,6 +1472,7 @@ button.pn:hover { text-decoration: underline; }
     if (S.view === 'player') renderPlayer();
     else if (S.view === 'week') renderWeek();
     else if (S.view === 'past') renderPast();
+    else if (S.view === 'compare') renderCompare();
     else renderRank();
   }
   function route() {
@@ -1287,6 +1481,9 @@ button.pn:hover { text-decoration: underline; }
     if (m) {
       S.view = 'player'; S.sex = m[1]; S.pid = +m[2];
       ensureSex(S.sex).then(render); render(); window.scrollTo(0, 0);
+    } else if ((m = /^compare(?:-([MW])-(\d+)(?:-(\d+))?)?$/.exec(h))) {
+      S.view = 'compare'; if (m[1]) S.sex = m[1]; S.cmp = m[1] ? [+m[2], m[3] != null ? +m[3] : null] : [null, null];
+      var rdy = D[S.sex] && D[S.sex].ready; render(); if (!rdy) ensureSex(S.sex).then(render); window.scrollTo(0, 0);
     } else {
       S.view = h === 'week' || h === 'past' ? h : 'rank';
       ensureSex(S.sex).then(function () { render(); }); render();
@@ -1297,6 +1494,7 @@ button.pn:hover { text-decoration: underline; }
   function setSex(sex) {
     if (S.sex === sex && S.view !== 'player') return;
     S.sex = sex; S.week = null; S.pweek = null; S.more = 0;
+    if (S.view === 'compare') { S.cmp = [null, null]; go('compare'); return; }
     if (S.view === 'player') { S.view = 'rank'; if (location.hash && location.hash !== '#rank') location.hash = 'rank'; else route(); }
     else { ensureSex(sex).then(render); render(); }
   }
@@ -1322,6 +1520,12 @@ button.pn:hover { text-decoration: underline; }
         var dd = D[S.sex], cw = S.pweek == null ? NOW_WEEK : S.pweek, nw = cw + (t.closest('#pwNext') ? 1 : -1);
         S.pweek = Math.max(dd.liveStart, Math.min(NOW_WEEK, nw)); S.more = 0; renderPast(); return;
       }
+      if ((b = t.closest('[data-pick]'))) { S.cmp[+b.dataset.pick] = +b.dataset.i; go(cmpHash()); return; }
+      if ((b = t.closest('[data-clear]'))) { var cn = +b.dataset.clear; S.cmp[cn] = null; if (S.cmp[0] == null && S.cmp[1] != null) S.cmp = [S.cmp[1], null]; go(cmpHash()); return; }
+      if ((b = t.closest('[data-csys]'))) { cmpState.sys = b.dataset.csys; if (S.cmpH) { drawCompare(D[S.sex], S.cmp[0], S.cmp[1], S.cmpH[0], S.cmpH[1]); } return; }
+      if ((b = t.closest('[data-crange]'))) { cmpState.range = b.dataset.crange; if (S.cmpH) { drawCompare(D[S.sex], S.cmp[0], S.cmp[1], S.cmpH[0], S.cmpH[1]); } return; }
+      if ((b = t.closest('[data-cmpfrom]'))) { S.cmp = [+b.dataset.cmpfrom, null]; go('compare-' + S.sex + '-' + b.dataset.cmpfrom); return; }
+      if (!t.closest('.slot')) Array.prototype.forEach.call(document.querySelectorAll('.cres'), function (x) { x.hidden = true; });
       if ((b = t.closest('[data-sys]'))) { S.sys = +b.dataset.sys; renderRank(); return; }
       if ((b = t.closest('[data-n]'))) { S.topn = +b.dataset.n; renderRank(); return; }
       if (t.closest('#wkPrev')) return stepWeek(-1);
@@ -1332,7 +1536,9 @@ button.pn:hover { text-decoration: underline; }
       if ((b = t.closest('[data-range]'))) { chartState.range = b.dataset.range; if (S.hist) drawPlayer(D[S.sex], S.pid, S.hist); return; }
     });
     document.addEventListener('keydown', function (e) { if ((e.key === 'Enter' || e.key === ' ') && e.target.classList && e.target.classList.contains('row')) { e.preventDefault(); e.target.click(); } });
-    document.addEventListener('input', function (e) { if (e.target.id === 'wk') { var t = +e.target.value; S.week = t >= NOW_WEEK ? null : t; renderRank(); var w = $('#wk'); if (w) w.focus(); } });
+    document.addEventListener('input', function (e) {
+      if (e.target.classList && e.target.classList.contains('cq')) { cmpSearch(+e.target.dataset.slot, e.target.value); return; }
+      if (e.target.id === 'wk') { var t = +e.target.value; S.week = t >= NOW_WEEK ? null : t; renderRank(); var w = $('#wk'); if (w) w.focus(); } });
     document.addEventListener('change', function (e) {
       if (e.target.id === 'pwSel') { S.pweek = +e.target.value; S.more = 0; renderPast(); return; }
       if (e.target.id === 'yr') { var d = D[S.sex], t = Math.max(d.top.w0, Math.floor(C.ordOf(e.target.value + '-01-01') / 7) + 1); S.week = t >= NOW_WEEK ? null : t; renderRank(); }
