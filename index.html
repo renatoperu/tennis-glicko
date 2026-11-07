@@ -190,7 +190,7 @@ button.pn:hover { text-decoration: underline; }
    systems: 0 general, 1 hard, 2 clay, 3 grass, 4 carpet.  Works in the browser and in Node. */
 (function (root) {
   'use strict';
-  var Q = 173.7178, SIG0 = 0.06, NSYS = 5, TAU = 0.9, STRETCH = 2.0, PHI0 = 350 / Q;
+  var Q = 173.7178, SIG0 = 0.06, NSYS = 5, TAU = 0.9, STRETCH = null, PHI0 = 350 / Q;
 
   function gfun(phi) { return 1 / Math.sqrt(1 + 3 * phi * phi / (Math.PI * Math.PI)); }
 
@@ -218,7 +218,7 @@ button.pn:hover { text-decoration: underline; }
 
   /* score for the winner from per-set game counts. ret=true -> plain win. */
   function scoreFromGames(gw, gl, ret) {
-    if (ret || gw + gl <= 0) return 1;
+    if (STRETCH === null || ret || gw + gl <= 0) return 1;   /* STRETCH null = win/loss only */
     var share = gw / (gw + gl);
     return Math.min(1, Math.max(0, 0.5 + STRETCH * (share - 0.5)));
   }
@@ -939,7 +939,7 @@ button.pn:hover { text-decoration: underline; }
   function paintStatus() {
     var el = $('#statusline'); if (!el) return;
     var d = D[S.sex], l = d && d.live, cls = 'warn', txt = '';
-    var through = 'Archive through 2 Jun 2026';
+    var through = 'Archive through 2 Jun 2026 (men’s Challengers to 14 Jun)';
     if (!d || !d.ready) { el.innerHTML = ''; return; }
     if (S.view === 'week') {
       var tf = { hour: '2-digit', minute: '2-digit' };
@@ -956,7 +956,7 @@ button.pn:hover { text-decoration: underline; }
     else if (l.status === 'ok') {
       cls = 'ok';
       var tm = l.at ? l.at.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
-      txt = 'Live tour results ' + (l.fail ? '(' + l.fail + ' weeks missing) ' : '') + 'updated ' + tm + ' · ' + d.res.stats.espn + ' matches since June · Challenger/ITF through 2 Jun 2026';
+      txt = 'Live tour results ' + (l.fail ? '(' + l.fail + ' weeks missing) ' : '') + 'updated ' + tm + ' · ' + d.res.stats.espn + ' matches since June · Challenger/ITF through 2 Jun 2026 (men’s Challengers 14 Jun)';
     } else if (l.status === 'blocked') {
       txt = 'Live feed not reachable here' + (d.res.stats.espn ? ' · showing ' + d.res.stats.espn + ' cached live matches' : '') + ' · ' + through;
     } else txt = through;
@@ -1242,18 +1242,17 @@ button.pn:hover { text-decoration: underline; }
       var m = list[i];
       if (m.ev !== cur) { if (cur !== null) h += '</ul>'; cur = m.ev; h += '<h3 class="day">' + esc(m.ev || 'Tournament') + '</h3><ul class="matches">'; }
       h += '<li class="m pm"><div class="pt">' + who(d, m.w, m.wn) + ' <span class="muted">d.</span> ' + who(d, m.l, m.ln) + '</div>' +
-        '<div class="mm"><span class="num sc2">' + esc(m.sc) + '</span>' + (m.rd ? '<span>' + esc(m.rd) + '</span>' : '') + surfChip(m.sy) +
-        '<span title="How much this result counted: 1.00 is a full win, less for a close match">counts ' + (+m.s).toFixed(2) + '</span></div></li>';
+        '<div class="mm"><span class="num sc2">' + esc(m.sc) + '</span>' + (m.rd ? '<span>' + esc(m.rd) + '</span>' : '') + surfChip(m.sy) + '</div></li>';
     }
     if (cur !== null) h += '</ul>';
-    if (!list.length) h = '<div class="empty-state card">' + (tier > 0 && t > d.liveStart + 1 ? 'No Challenger or ITF results are available after 2 June 2026.' : 'No matches in this selection.') + '</div>';
+    if (!list.length) h = '<div class="empty-state card">' + (tier > 0 && t > d.liveStart + 1 ? 'No Challenger or ITF results are available after 14 June 2026 (women’s ITF: 2 June).' : 'No matches in this selection.') + '</div>';
     var more = !S.more && list.length > LIM ? '<button type="button" class="chip" id="moreUp" style="margin-top:10px">Show all ' + list.length + ' matches</button>' : '';
     main.innerHTML = '<div id="statusline" class="status"></div><div class="controls">' +
       '<div class="weekrow"><button type="button" class="iconbtn" id="pwPrev" aria-label="Previous week">‹</button>' +
       '<select id="pwSel" aria-label="Week" style="min-height:40px">' + opts + '</select>' +
       '<button type="button" class="iconbtn" id="pwNext" aria-label="Next week">›</button></div>' +
       '<div class="chips" role="group" aria-label="Level">' + tiers + '</div></div>' +
-      '<p class="note" style="margin:6px 2px 0">Every match listed here was used to update the ratings for the week of ' + fmtWeek(t) + '. “Counts” is the result value: the share of games won, stretched so a 6–3 6–3 win counts as 1.00.' +
+      '<p class="note" style="margin:6px 2px 0">Every match listed here was used to update the ratings for the week of ' + fmtWeek(t) + '.' +
       (t <= d.liveStart + 1 ? ' Earlier weeks are inside each player’s rating chart.' : '') + '</p>' + h + more;
     paintStatus();
   }
@@ -1263,12 +1262,11 @@ button.pn:hover { text-decoration: underline; }
     $('#about').innerHTML = '<details><summary>How these ratings work</summary>' +
       '<p>Every player has a Glicko-2 rating, updated once a week using all of that week’s matches. A new player starts at 1500 with an uncertainty (RD) of 350 points; the rating moves most while RD is large and settles as results accumulate.</p>' +
       '<ul><li><b>General</b> uses every match on every surface. <b>Hard, Clay, Grass</b> and Carpet are separate ratings built only from matches on that surface.</li>' +
-      '<li><b>What counts as a result:</b> the share of games won, stretched so a 6–3 6–3 win counts as a full win and a tight win earns less. Retirements count as plain wins. Walkovers and defaults are ignored.</li>' +
-      '<li><b>Backtest (2013–2025, about 700,000 matches):</b> games-based scoring predicted results better than win/loss alone, mostly through Challenger and ITF matches.</li>' +
+      '<li><b>What counts as a result:</b> only who won. A win is 1 and a loss is 0, whatever the score, so a 7–6 7–6 win counts the same as 6–0 6–0. Retirements count as wins. Walkovers and defaults are ignored.</li>' +
       '<li><b>Listed players</b> played within the last 52 weeks and have an RD of at most ' + META.params.rdCut[0] + ' (surfaces ' + META.params.rdCut[1] + '–' + META.params.rdCut[3] + '). Others are provisional and stay searchable. Records such as peak rating only count while the rating was reliable.</li>' +
       '<li><b>Win chances</b> (This week tab) turn the rating gap, the surface rating and both players’ uncertainty into a match-win probability. The conversion was fitted on tour matches from 2005 to 2021 and checked on 2022 and later (log-loss ' + (COEF.info.M.general_and_surface || COEF.info.M['general+surface'][0]).toFixed(3) + ' men, ' + (COEF.info.W['general+surface'][0]).toFixed(3) + ' women, against 0.693 for a coin flip).</li>' +
       '<li>Men and women are rated separately. Ratings are not comparable across the two lists.</li></ul>' +
-      '<p><b>Data:</b> match results from Jeff Sackmann’s ATP and WTA datasets (CC BY-NC-SA 4.0; ATP, Challenger, Futures, WTA and ITF, 1968 to 2 June 2026), plus ATP and WTA tour results from ESPN after that. Challenger and ITF results after 2 June 2026 are not available, so those players’ ratings are frozen until a source exists.</p></details>';
+      '<p><b>Data:</b> match results from Jeff Sackmann’s ATP and WTA datasets (CC BY-NC-SA 4.0; ATP, Challenger, Futures, WTA and ITF, 1968 to 2 June 2026; men’s Challengers also from the ATP site to 14 June), plus ATP and WTA tour results from ESPN after that. Challenger and ITF results after those dates are not loaded yet, so those players’ ratings are frozen until they are.</p></details>';
   }
 
   /* ---------------- routing and events ---------------- */

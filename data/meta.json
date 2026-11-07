@@ -1,1 +1,1 @@
-{"params": {"tau": 0.9, "sigma0": 0.06, "stretch": 2.0, "activeWeeks": 52, "rdCut": [110.0, 140.0, 140.0, 150.0, 140.0], "topn": 100}, "sys": ["general", "hard", "clay", "grass", "carpet"], "pools": {}, "liveStartWeek": 105680, "lastArchiveDate": 739769}
+{"params": {"tau": 0.9, "sigma0": 0.06, "scoring": "result", "activeWeeks": 52, "rdCut": [110.0, 140.0, 140.0, 150.0, 140.0], "topn": 100}, "sys": ["general", "hard", "clay", "grass", "carpet"], "pools": {}, "liveStartWeek": 105680, "lastArchiveDate": 739775}
