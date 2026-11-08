@@ -675,7 +675,7 @@ var COUNTRY={AGO:['AO','Angola'],AHO:['','Netherlands Antilles'],ALB:['AL','Alba
       if (A.isNew) stats.newPlayers++; if (B.isNew) stats.newPlayers++;
       if (seen.has(pairKey(m.week, A.idx, B.idx))) { stats.dup++; return; }
       seen.add(pairKey(m.week, A.idx, B.idx));
-      bucket(m.week).push({ a: A.idx, b: B.idx, sy: m.sy, s: m.s });
+      bucket(m.week).push({ a: A.idx, b: B.idx, sy: m.sy, s: G.STRETCH === null ? 1 : m.s });   /* win/loss scoring: never trust a score cached by an older version of the app */
       stats.espn++;
     });
     model.grow(names.p.n.length);
