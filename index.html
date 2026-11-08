@@ -18,6 +18,7 @@
 .fl { font-family: "TwemojiFlags", sans-serif; font-style: normal; font-weight: 400; margin-right: .3em; letter-spacing: 0; }
 .rtour { border-top: 1px solid var(--line); padding: 10px 0; } .rtour:first-of-type { border-top: 0; }
 .rth { display: grid; grid-template-columns: auto minmax(0,1fr) auto; gap: 4px 12px; align-items: baseline; }
+.ba { font: 500 12px/1.2 var(--f-ui); color: var(--muted); }
 .rdate { font: 600 13px/1.2 var(--f-ui); color: var(--muted); white-space: nowrap; } .rname { font-weight: 600; min-width: 0; overflow-wrap: anywhere; } .rdel { text-align: right; font-size: 18px; white-space: nowrap; }
 .rl { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 3px; } .rl li { display: flex; flex-wrap: wrap; gap: 0 6px; align-items: baseline; min-width: 0; }
 .rr { display: inline-block; min-width: 34px; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
@@ -970,7 +971,7 @@ var COUNTRY={AGO:['AO','Angola'],AHO:['','Netherlands Antilles'],ALB:['AL','Alba
     var hg = h.g, at = {}; hg.forEach(function (x, j) { at[x.t] = j; });
     groups.forEach(function (g) {
       g.ms.sort(function (a, b) { return (RORD[a.rd] || 0) - (RORD[b.rd] || 0) || a.date - b.date; });
-      var j = at[g.w]; g.delta = j == null ? null : hg[j].r - (j > 0 ? hg[j - 1].r : 1500);
+      var j = at[g.w]; g.delta = j == null ? null : hg[j].r - (j > 0 ? hg[j - 1].r : 1500); g.after = j == null ? null : hg[j].r; g.before = j == null ? null : (j > 0 ? hg[j - 1].r : 1500); g.prevW = j != null && j > 0 ? hg[j - 1].t : null;
     });
     groups.sort(function (a, b) { return b.date - a.date; });
     // a week with two events: the rating change is for the whole week, so show it once (on the latest event)
@@ -987,6 +988,7 @@ var COUNTRY={AGO:['AO','Angola'],AHO:['','Netherlands Antilles'],ALB:['AL','Alba
       if (g.shared) dl = '<span class="muted" title="Rating change is for the whole week, shown on the week’s last event">in week total</span>';
       else if (g.delta == null) dl = '<span class="muted">–</span>';
       else { var v = Math.round(g.delta); dl = '<span class="num mv ' + (v > 0 ? 'up' : v < 0 ? 'down' : '') + '">' + (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v) + '</span>'; }
+      if (g.after != null) dl += '<div class="ba">' + Math.round(g.before) + ' → ' + Math.round(g.after) + '</div>';
       var lines = g.ms.map(function (m) {
         n++;
         return '<li><span class="rr">' + esc(m.rd || '') + '</span><b class="wl ' + (m.win ? 'w' : 'l') + '">' + (m.win ? 'W' : 'L') + '</b> ' + flag(d.players.c[m.opp]) + who(d, m.opp, m.on) + ' <span class="num sc2">' + esc(m.win ? m.sc : flipScore(m.sc)) + '</span></li>';
@@ -1724,7 +1726,7 @@ var COUNTRY={AGO:['AO','Angola'],AHO:['','Netherlands Antilles'],ALB:['AL','Alba
   function start() {
     Promise.all([getJSON(DATA + 'meta.json'), getJSON(DATA + 'tsurf.json'), getJSON(DATA + 'winprob.json')]).then(function (r) {
       META = r[0]; TS = r[1]; COEF = r[2]; GUESS = new C.SurfaceGuesser(TS);
-      renderAbout(); bind(); route();
+      window.__tg = { S: S, D: D }; renderAbout(); bind(); route();
       var first = S.sex;
       ensureSex(first).then(function (d) { render(); refreshLive(d); return ensureSex(first === 'M' ? 'W' : 'M'); }).then(function (d2) { return refreshLive(d2); });
     }).catch(function (e) { $('#main').innerHTML = '<div class="loading err">Could not load the rating data (' + esc(e.message) + ').</div>'; });
