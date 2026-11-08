@@ -1115,7 +1115,7 @@ var COUNTRY={AGO:['AO','Angola'],AHO:['','Netherlands Antilles'],ALB:['AL','Alba
   function paintStatus() {
     var el = $('#statusline'); if (!el) return;
     var d = D[S.sex], l = d && d.live, cls = 'warn', txt = '';
-    var through = 'Archive through 2 Jun 2026 (men’s Challengers to 2 Nov, men’s ITF to 1 Nov)';
+    var through = 'Archive through 2 Jun 2026 (Challengers to 2 Nov, ITF to 1 Nov, WTA 125 to mid-Nov)';
     if (!d || !d.ready) { el.innerHTML = ''; return; }
     if (S.view === 'week') {
       var tf = { hour: '2-digit', minute: '2-digit' };
@@ -1132,7 +1132,7 @@ var COUNTRY={AGO:['AO','Angola'],AHO:['','Netherlands Antilles'],ALB:['AL','Alba
     else if (l.status === 'ok') {
       cls = 'ok';
       var tm = l.at ? l.at.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
-      txt = 'Live tour results ' + (l.fail ? '(' + l.fail + ' weeks missing) ' : '') + 'updated ' + tm + ' · ' + d.res.stats.espn + ' matches since June · Challenger/ITF through 2 Jun 2026 (men’s Challengers to 2 Nov, men’s ITF to 1 Nov)';
+      txt = 'Live tour results ' + (l.fail ? '(' + l.fail + ' weeks missing) ' : '') + 'updated ' + tm + ' · ' + d.res.stats.espn + ' matches since June · Challenger/ITF through 2 Jun 2026 (Challengers to 2 Nov, ITF to 1 Nov, WTA 125 to mid-Nov)';
     } else if (l.status === 'blocked') {
       txt = 'Live feed not reachable here' + (d.res.stats.espn ? ' · showing ' + d.res.stats.espn + ' cached live matches' : '') + ' · ' + through;
     } else txt = through;
@@ -1424,7 +1424,7 @@ var COUNTRY={AGO:['AO','Angola'],AHO:['','Netherlands Antilles'],ALB:['AL','Alba
         '<div class="mm"><span class="num sc2">' + esc(m.sc) + '</span>' + (m.rd ? '<span>' + esc(m.rd) + '</span>' : '') + surfChip(m.sy) + '</div></li>';
     }
     if (cur !== null) h += '</ul>';
-    if (!list.length) h = '<div class="empty-state card">' + (tier > 0 && t > d.liveStart + 1 ? 'No Challenger or ITF results are available after 2 November 2026 (ITF: 1 November) (women’s ITF: 1 November; women’s Challenger: 2 June).' : 'No matches in this selection.') + '</div>';
+    if (!list.length) h = '<div class="empty-state card">' + (tier > 0 && t > d.liveStart + 1 ? 'No Challenger or ITF results are available after 2 November 2026 (ITF: 1 November) (women’s ITF: 1 November).' : 'No matches in this selection.') + '</div>';
     var more = !S.more && list.length > LIM ? '<button type="button" class="chip" id="moreUp" style="margin-top:10px">Show all ' + list.length + ' matches</button>' : '';
     main.innerHTML = '<div id="statusline" class="status"></div><div class="controls">' +
       '<div class="weekrow"><button type="button" class="iconbtn" id="pwPrev" aria-label="Previous week">‹</button>' +
@@ -1445,7 +1445,7 @@ var COUNTRY={AGO:['AO','Angola'],AHO:['','Netherlands Antilles'],ALB:['AL','Alba
       '<li><b>Listed players</b> played within the last 52 weeks, have at least ' + (META.params.minMatches || 0) + ' matches in that time (qualifying, Challenger and ITF matches count) and an RD of at most ' + META.params.rdCut[0] + ' (surfaces ' + META.params.rdCut[1] + '–' + META.params.rdCut[3] + '). Others are provisional and stay searchable. Records such as peak rating only count while the rating was reliable.</li>' +
       '<li><b>Win chances</b> (This week tab) turn the rating gap, the surface rating and both players’ uncertainty into a match-win probability. The conversion was fitted on tour matches from 2005 to 2021 and checked on 2022 and later (log-loss ' + (COEF.info.M.general_and_surface || COEF.info.M['general+surface'][0]).toFixed(3) + ' men, ' + (COEF.info.W['general+surface'][0]).toFixed(3) + ' women, against 0.693 for a coin flip).</li>' +
       '<li>Men and women are rated separately. Ratings are not comparable across the two lists.</li></ul>' +
-      '<p><b>Data:</b> match results from Jeff Sackmann’s ATP and WTA datasets (CC BY-NC-SA 4.0; ATP, Challenger, Futures, WTA and ITF, 1968 to 2 June 2026; men’s Challengers also from the ATP site to 2 November and men’s and women’s ITF from world.tennis to 1 November), plus ATP and WTA tour results from ESPN after that. Challenger and ITF results after those dates are not loaded yet, so those players’ ratings are frozen until they are. Birth dates come from the same datasets (some are missing, so a few players have no age). Flag artwork: Twemoji (CC-BY 4.0) via the Twemoji Country Flags font. Flags show the nationality code in the data; defunct countries have no flag.</p></details>';
+      '<p><b>Data:</b> match results from Jeff Sackmann’s ATP and WTA datasets (CC BY-NC-SA 4.0; ATP, Challenger, Futures, WTA and ITF, 1968 to 2 June 2026; men’s Challengers also from the ATP site to 2 November, women’s WTA 125 events from the WTA site (June to mid-November) and men’s and women’s ITF from world.tennis to 1 November), plus ATP and WTA tour results from ESPN after that. Challenger and ITF results after those dates are not loaded yet, so those players’ ratings are frozen until they are. Birth dates come from the same datasets (some are missing, so a few players have no age). Flag artwork: Twemoji (CC-BY 4.0) via the Twemoji Country Flags font. Flags show the nationality code in the data; defunct countries have no flag.</p></details>';
   }
 
   /* ---------------- compare view ---------------- */
