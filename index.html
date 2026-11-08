@@ -1733,4 +1733,4 @@ var COUNTRY={AGO:['AO','Angola'],AHO:['','Netherlands Antilles'],ALB:['AL','Alba
 })();
 
 </script>
-<script>if("serviceWorker" in navigator&&location.protocol.indexOf("http")===0){try{navigator.serviceWorker.register("sw.js").catch(function(){})}catch(e){}}</script></body></html>
+<script>if("serviceWorker" in navigator&&location.protocol.indexOf("http")===0){try{var had=!!navigator.serviceWorker.controller;navigator.serviceWorker.addEventListener("controllerchange",function(){if(had&&!window.__rl){window.__rl=1;location.reload()}});navigator.serviceWorker.register("sw.js").catch(function(){})}catch(e){}}</script></body></html>
