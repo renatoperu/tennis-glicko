@@ -1,5 +1,5 @@
 /* Offline cache: the app shell and the rating data are cached after first use; ESPN requests are never cached. */
-const V = 'tg-20261108111200';
+const V = 'tg-20261111195119';
 self.addEventListener('install', e => { self.skipWaiting(); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== V).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener('fetch', e => {
