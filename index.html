@@ -713,7 +713,7 @@ var COUNTRY={AGO:['AO','Angola'],AHO:['','Netherlands Antilles'],ALB:['AL','Alba
   var REFRESH_MS = 2 * 3600 * 1000;
   var META = null, TS = null, GUESS = null, COEF = null;
   var D = { M: null, W: null };
-  var S = { sex: 'M', sys: 0, topn: 25, week: null, view: 'rank', cmp: [null, null], pid: null, pweek: null, tier: 0, more: 0, cty: '' };
+  var S = { sex: 'M', sys: 0, topn: 25, week: null, view: 'rank', cmp: [null, null], pid: null, pweek: null, tier: 0, more: 0, cty: '', age: '' };
   var TIERS = ['Tour', 'Challenger', 'ITF'];
 
   /* country flags: IOC/ISO3 code -> Twemoji flag (own font, so Windows shows them too) */
@@ -887,13 +887,21 @@ var COUNTRY={AGO:['AO','Angola'],AHO:['','Netherlands Antilles'],ALB:['AL','Alba
     if (!fc.w[t]) fc.w[t] = m.top(t, META.params.rdCut, 1e9, META.params.activeWeeks, false, META.params.minMatches || 0);
     return fc.w[t][sys];
   }
-  function countryList(d, t, sys, cc) {
+  /* birth year of every player (0 = birth date unknown) */
+  function birthYears(d) {
+    if (!d._by) { var b = d.players.b, n = d.players.n.length, a = new Array(n); for (var i = 0; i < n; i++) a[i] = b && b[i] ? new Date(Date.UTC(1900, 0, 1) + b[i] * 86400000).getUTCFullYear() : 0; d._by = a; }
+    return d._by;
+  }
+  /* age groups, counted from the year of the week on screen: Junior = born 20 years before that year or later, U16 = 16 */
+  var AGEN = { jr: 20, u16: 16 };
+  function countryList(d, t, sys, cc, age) {
     var L = fullList(d, t, sys);
-    if (!cc) return L;
-    var o = { idx: [], rt: [], rd: [], wr: [] };
-    for (var j = 0; j < L.idx.length; j++) if (d.players.c[L.idx[j]] === cc) { o.idx.push(L.idx[j]); o.rt.push(L.rt[j]); o.rd.push(L.rd[j]); o.wr.push(j + 1); }
+    if (!cc && !age) return L;
+    var o = { idx: [], rt: [], rd: [], wr: [] }, by = age ? birthYears(d) : null, minY = age ? yearOfWeek(t) - AGEN[age] : 0;
+    for (var j = 0; j < L.idx.length; j++) if ((!cc || d.players.c[L.idx[j]] === cc) && (!age || (by[L.idx[j]] && by[L.idx[j]] >= minY))) { o.idx.push(L.idx[j]); o.rt.push(L.rt[j]); o.rd.push(L.rd[j]); o.wr.push(j + 1); }
     return o;
   }
+  function ageTxt(d, i, t) { var a = ageAt(d, i, C.mondayOfWeek(t) + 3); return a == null || a < 10 || a > 60 ? '' : ' · ' + Math.floor(a) + ' y'; }
   function playerName(d, i) { return d.players.n[i] || 'Unknown'; }
   function info(d, i) {
     var m = d.res.model, t = NOW_WEEK, out = { sys: [] }, k;
@@ -1065,7 +1073,7 @@ var COUNTRY={AGO:['AO','Angola'],AHO:['','Netherlands Antilles'],ALB:['AL','Alba
     if (!d || !d.ready) { main.innerHTML = '<div class="loading">Loading ' + (S.sex === 'M' ? 'men' : 'women') + '’s ratings…</div>'; return; }
     var t = S.week == null ? latestWeek(d) : S.week, now = S.week == null || S.week >= NOW_WEEK;
     if (t > NOW_WEEK) t = NOW_WEEK;
-    var L = countryList(d, t, S.sys, S.cty), P = countryList(d, t - 1, S.sys, S.cty), prev = {}, i;
+    var L = countryList(d, t, S.sys, S.cty, S.age), P = countryList(d, t - 1, S.sys, S.cty, S.age), prev = {}, i;
     var base = fullList(d, t, S.sys), seen = {}, ctys = [];
     base.idx.forEach(function (x) { var c = d.players.c[x]; if (c && !seen[c]) { seen[c] = 1; ctys.push(c); } });
     if (S.cty && !seen[S.cty]) ctys.push(S.cty);
@@ -1086,20 +1094,23 @@ var COUNTRY={AGO:['AO','Angola'],AHO:['','Netherlands Antilles'],ALB:['AL','Alba
       else mv = '<span class="mv">–</span>';
       var w = 20 + 80 * (L.rt[i] - lo) / span;
       rows += '<li class="row" tabindex="0" role="link" data-i="' + idx + '"><span class="rk">' + (i + 1) + '</span><span class="nm"><b>' + flag(d.players.c[idx]) + esc(playerName(d, idx)) +
-        '<small>' + (S.cty ? '#' + L.wr[i] + ' world' : esc(d.players.c[idx] || '')) + '</small></b><span class="bar2"><i style="--w:' + w.toFixed(0) + '%;--bar:' + color + '"></i></span></span>' + mv +
+        '<small>' + ((S.cty || S.age) ? '#' + L.wr[i] + ' world' : esc(d.players.c[idx] || '')) + ageTxt(d, idx, t) + '</small></b><span class="bar2"><i style="--w:' + w.toFixed(0) + '%;--bar:' + color + '"></i></span></span>' + mv +
         '<span class="rt">' + Math.round(L.rt[i]) + '<small>±' + Math.round(L.rd[i]) + '</small></span></li>';
     }
-    if (!n) rows = '<li class="empty-state">No ranked players' + (S.cty ? ' from ' + esc(cname(S.cty)) : '') + ' for this week and surface.</li>';
+    if (!n) rows = '<li class="empty-state">No ranked players' + (S.age ? ' in this age group' : '') + (S.cty ? ' from ' + esc(cname(S.cty)) : '') + ' for this week and surface.</li>';
     var chips = SYS.map(function (nm, k) {
       if (k === 4 && !carpetOk) return '';
       return '<button type="button" class="chip" data-sys="' + k + '" aria-pressed="' + (S.sys === k) + '"><i' + (k === 0 ? ' class="gen"' : '') + ' style="background:var(' + SVAR[k] + ')"></i>' + nm + '</button>';
     }).join('');
     var sizes = [10, 25, 100].map(function (x) { return '<button type="button" class="chip" data-n="' + x + '" aria-pressed="' + (S.topn === x) + '">Top ' + x + '</button>'; }).join('');
+    var yy = yearOfWeek(t);
+    var ages = [['', 'All ages'], ['jr', 'Junior'], ['u16', 'U16']].map(function (x) { return '<button type="button" class="chip" data-age="' + x[0] + '" aria-pressed="' + (S.age === x[0]) + '"' + (x[0] ? ' title="Born in ' + (yy - AGEN[x[0]]) + ' or later"' : '') + '>' + x[1] + '</button>'; }).join('');
     var cut = META.params.rdCut[S.sys];
     main.innerHTML =
       '<div id="statusline" class="status"></div>' +
       '<div class="controls"><div class="chips" role="group" aria-label="Rating">' + chips + '</div>' +
       '<div class="chips" role="group" aria-label="List size">' + sizes + '</div>' +
+      '<div class="chips" role="group" aria-label="Age group">' + ages + '</div>' +
       '<div class="weekmeta"><span><label class="muted" for="cty">Country </label><select id="cty" class="cty">' + ctyOpts + '</select></span></div>' +
       '<div class="weekrow"><button type="button" class="iconbtn" id="wkPrev" aria-label="Previous week">‹</button>' +
       '<input id="wk" type="range" min="' + d.top.w0 + '" max="' + NOW_WEEK + '" step="1" value="' + t + '" aria-label="Week">' +
@@ -1108,7 +1119,7 @@ var COUNTRY={AGO:['AO','Angola'],AHO:['','Netherlands Antilles'],ALB:['AL','Alba
       '<span><label class="muted" for="yr">Jump to </label><select id="yr">' + yearOptions(d, t) + '</select>' +
       (now ? '' : ' <button type="button" class="nowbtn" id="nowBtn">Back to now</button>') + '</span></div></div>' +
       '<ol class="list" aria-label="Top ' + n + ' ' + SYS[S.sys] + ' ratings">' + rows + '</ol>' +
-      '<p class="note">' + SYS[S.sys] + ' rating, ' + (S.sex === 'M' ? 'men' : 'women') + '. Only players who played in the last 52 weeks and whose uncertainty (±RD) is at most ' + cut + ' are ranked; the rest are provisional and still searchable.' + (S.cty && t < d.liveStart ? ' Country lists for past weeks search only that week’s world top 100.' : '') + '</p>';
+      '<p class="note">' + SYS[S.sys] + ' rating, ' + (S.sex === 'M' ? 'men' : 'women') + '. Only players who played in the last 52 weeks and whose uncertainty (±RD) is at most ' + cut + ' are ranked; the rest are provisional and still searchable.' + ((S.cty || S.age) && t < d.liveStart ? ' Country and age lists for past weeks search only that week’s world top 100.' : '') + (S.age ? ' ' + (S.age === 'jr' ? 'Junior' : 'U16') + ' = born in ' + (yy - AGEN[S.age]) + ' or later (the year of the week on screen minus ' + AGEN[S.age] + '); players with no known birth date are left out.' : '') + ' The number after the country is the age in that week.</p>';
     paintStatus();
   }
 
@@ -1666,7 +1677,7 @@ var COUNTRY={AGO:['AO','Angola'],AHO:['','Netherlands Antilles'],ALB:['AL','Alba
   function go(hash) { if (location.hash === '#' + hash) route(); else location.hash = hash; }
   function setSex(sex) {
     if (S.sex === sex && S.view !== 'player') return;
-    S.sex = sex; S.week = null; S.pweek = null; S.more = 0; S.cty = '';
+    S.sex = sex; S.week = null; S.pweek = null; S.more = 0; S.cty = ''; S.age = '';
     if (S.view === 'compare') { S.cmp = [null, null]; go('compare'); return; }
     if (S.view === 'player') { S.view = 'rank'; if (location.hash && location.hash !== '#rank') location.hash = 'rank'; else route(); }
     else { ensureSex(sex).then(render); render(); }
@@ -1703,6 +1714,7 @@ var COUNTRY={AGO:['AO','Angola'],AHO:['','Netherlands Antilles'],ALB:['AL','Alba
       if (!t.closest('.slot')) Array.prototype.forEach.call(document.querySelectorAll('.cres'), function (x) { x.hidden = true; });
       if ((b = t.closest('[data-sys]'))) { S.sys = +b.dataset.sys; renderRank(); return; }
       if ((b = t.closest('[data-n]'))) { S.topn = +b.dataset.n; renderRank(); return; }
+      if ((b = t.closest('[data-age]'))) { S.age = b.dataset.age; renderRank(); return; }
       if (t.closest('#wkPrev')) return stepWeek(-1);
       if (t.closest('#wkNext')) return stepWeek(1);
       if (t.closest('#nowBtn')) { S.week = null; return renderRank(); }
